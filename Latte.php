@@ -13,6 +13,7 @@ use Northrook\Latte\TemplateChainLoader;
 use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Stopwatch\Stopwatch;
+use Psr\Log\LoggerInterface;
 use Closure, Throwable, LogicException;
 use function array_map, file_exists, in_array, is_object, spl_object_id;
 
@@ -38,11 +39,11 @@ class Latte
     protected LoaderInterface | Closure $loader;
 
     public function __construct(
-        protected string           $projectDirectory,
-        protected string           $cacheDirectory,
-        protected ?Stopwatch       $stopwatch = null,
-        protected readonly ?Logger $logger = null,
-        public bool                $autoRefresh = true,
+        protected string                    $projectDirectory,
+        protected string                    $cacheDirectory,
+        protected ?Stopwatch                $stopwatch = null,
+        protected readonly ?LoggerInterface $logger = null,
+        public bool                         $autoRefresh = true,
     ) {
         $this->stopwatch      ??= new Stopwatch( true );
         $this->templateLoader = new TemplateChainLoader( $this->projectDirectory );
