@@ -4,24 +4,17 @@ declare( strict_types = 1 );
 
 namespace Northrook;
 
-use Closure;
 use Latte\Engine;
 use Latte\Extension;
 use Latte\Loader as LoaderInterface;
 use Latte\Loaders\FileLoader;
-use LogicException;
 use Northrook\Core\Exception\InvalidTypeException;
 use Northrook\Latte\TemplateChainLoader;
-use Northrook\Logger\Log;
 use Symfony\Component\Filesystem\Exception\IOException;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Stopwatch\Stopwatch;
-use Throwable;
-use function array_map;
-use function file_exists;
-use function in_array;
-use function str_ends_with;
-use function str_starts_with;
+use Closure, Throwable, LogicException;
+use function array_map, file_exists, in_array, is_object, spl_object_id;
 
 /**
  * @method  render( string $template, object|array $parameters, null|string $block = null )
@@ -32,13 +25,12 @@ class Latte
     private static Latte $environment;
 
     private readonly TemplateChainLoader $templateLoader;
-    private readonly Engine              $engine;
+    private Engine                       $engine;
 
     private array $globalVariables = [];
 
     /** @var Extension[] */
     private array $extensions = [];
-
 
     /** @var callable[] */
     private array $postprocessors = [];
@@ -52,7 +44,8 @@ class Latte
         protected readonly ?Logger $logger = null,
         public bool                $autoRefresh = true,
     ) {
-        $this->stopwatch ??= new Stopwatch( true );
+        $this->stopwatch      ??= new Stopwatch( true );
+        $this->templateLoader = new TemplateChainLoader( $this->projectDirectory );
         $this->setStaticAccessor();
     }
 
@@ -110,7 +103,7 @@ class Latte
         $this->stopwatch->start( 'latte.engine', 'Templating' );
 
         if ( !file_exists( $this->cacheDirectory ) ) {
-            ( new Filesystem() )->mkdir( $this->cacheDirectory );
+            $this->filesystem()->mkdir( $this->cacheDirectory );
         }
 
         // Initialize the Engine.
@@ -123,8 +116,12 @@ class Latte
                      ->setAutoRefresh( $this->autoRefresh )
                      ->setLoader( $this->loader() );
 
-        Log::info(
-            'Started Latte Engine {id}.', [ 'id' => spl_object_id( $this->engine ), 'engine' => $this->engine ],
+        $this->logger?->info(
+            'Started Latte Engine {id}.',
+            [
+                'id'     => spl_object_id( $this->engine ),
+                'engine' => $this->engine,
+            ],
         );
 
         return $this->engine;
@@ -141,9 +138,8 @@ class Latte
             }
             catch ( Throwable $exception ) {
                 throw new InvalidTypeException(
-                    $this::class . ' could not use provided Loader. The passed Closure is not a valid ' . LoaderInterface::class,
-                    $this->loader->__invoke(),
-                    500, $exception,
+                    message : $this::class . ' could not use provided Loader. The passed Closure is not a valid ' . LoaderInterface::class,
+                    value   : $this->loader->__invoke(), previous : $exception,
                 );
             }
         }
@@ -173,6 +169,9 @@ class Latte
 
         foreach ( $extension as $addExtension ) {
             if ( in_array( $addExtension, $this->extensions, true ) ) {
+                $this->logger?->warning(
+                    $this::class . '->addExtension tried to add an already existing extension. Please ensure your config files; you likely have a duplicate call somewhere.',
+                );
                 continue;
             }
             $this->extensions[] = $addExtension;
@@ -192,9 +191,8 @@ class Latte
     /**
      * Add a directory path to a `templates` directory.
      *
-     * It is recommended to provide a namespace to avoid collisions.
-     *
-     * If no namespace is provided, generate one fromm the final directory of the path
+     * - You can set a template priority, higher means it will be checked earlier in the chain.
+     * - Setting priority:true sets the highest possible priority
      *
      * @param string    $path
      * @param bool|int  $priority
@@ -202,14 +200,13 @@ class Latte
      * @return $this
      */
     final public function addTemplateDirectory( string $path, bool | int $priority = false ) : static {
-        ( $this->templateLoader ??= new TemplateChainLoader( $this->projectDirectory ) )
-            ->add( $path, $priority );
+        $this->templateLoader->add( $path, $priority );
         return $this;
     }
 
     final public function clearTemplateCache() : bool {
         try {
-            ( new Filesystem() )->remove( $this->cacheDirectory );
+            $this->filesystem()->remove( $this->cacheDirectory );
         }
         catch ( IOException $exception ) {
             $this->logger?->error( $exception->getMessage() );
@@ -243,5 +240,10 @@ class Latte
             );
         }
         $this::$environment ??= $this;
+    }
+
+    final protected function filesystem() : Filesystem {
+        static $filesystem;
+        return $filesystem ??= new Filesystem();
     }
 }
