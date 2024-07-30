@@ -1,0 +1,28 @@
+{
+  "name": "northrook/latte-environment",
+  "type": "library",
+  "description": "Nette\\Latte integration for Northrook packages.",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Northrook\\": ""
+    }
+  },
+  "authors": [
+    {
+      "name": "Martin",
+      "email": "mn@northrook.com"
+    }
+  ],
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "require": {
+    "php": ">=8.2",
+    "latte/latte": "@stable",
+    "northrook/core": "dev-main",
+    "northrook/filesystem": "dev-main"
+  },
+  "require-dev": {
+    "northrook/dev-env": "dev-main"
+  }
+}
