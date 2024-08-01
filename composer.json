@@ -20,7 +20,8 @@
     "php": ">=8.2",
     "latte/latte": "@stable",
     "northrook/core": "dev-main",
-    "symfony/filesystem": "^7.1"
+    "symfony/filesystem": "^7.1",
+    "symfony/http-kernel": "^7.1"
   },
   "require-dev": {
     "northrook/dev-env": "dev-main"

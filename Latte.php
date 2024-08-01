@@ -18,8 +18,7 @@ use Closure, Throwable, LogicException;
 use function array_map, file_exists, in_array, is_object, spl_object_id;
 
 /**
- * @method  render( string $template, object|array $parameters, null|string $block = null )
- * @method  static render( string $template, object|array $parameters, null|string $block = null )
+ * @method  static render( string $template, object|array $parameters = [], null|string $block = null, bool $postProcessing = true )
  */
 class Latte
 {
@@ -73,6 +72,7 @@ class Latte
         string         $template,
         object | array $parameters = [],
         ?string        $block = null,
+        bool           $postProcessing = true,
     ) : string {
 
         $content = $this->engine()->renderToString(
@@ -80,6 +80,10 @@ class Latte
             $this->global( $parameters ),
             $block,
         );
+
+        if ( !$postProcessing ) {
+            return $content;
+        }
 
         return $this->postProcessing( $content );
     }
